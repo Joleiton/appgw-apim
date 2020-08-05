@@ -1,12 +1,22 @@
 ﻿######################################################################################################
-
-#Created by joleiton
 #v1.0.4
+#Created by joleiton
+
+#  Based on https://docs.microsoft.com/en-us/azure/api-management/api-management-howto-integrate-internal-vnet-appgateway#--steps-required-for-integrating-api-management-and-application-gateway
+
+    #Create a resource group for Resource Manager.
+    #Create a Virtual Network, subnet, and public IP for the Application Gateway. Create another subnet for API Management.
+    #Create an API Management service inside the VNET subnet created above and ensure you use the Internal mode.
+    #Set up a custom domain name in the API Management service.
+    #Create an Application Gateway configuration object.
+    #Create an Application Gateway resource.
+    #Create a CNAME from the public DNS name of the Application Gateway to the API Management proxy hostname.
+
+######################################################################################################
 
 #GLOBAL VARIABLES
 
 #SUB
-
 $_subscriptionId = ""
 
 #RG
@@ -15,20 +25,20 @@ $_location = "East Us"
 
 #APIM
 #apim/service
-$_apimServiceName = "apimservicename"  # API Management service instance name   
+$_apimServiceName = "apim_service_name"  # API Management service instance name   
 $_apimOrganization = "Microsoft"
 $_apimAdminEmail = "youralias@microsoft.com"
 
 #apim/hostname
-$_apim_gatewayHostname =  "api.jlacloud.com"
-$_apim_portalHostname = "portal.jlacloud.com"
+$_apim_gatewayHostname =  "yourproxy.customdomain.com"
+$_apim_portalHostname = "yourportal.customdomain.com"
 
 #Self Signed Cert Passwor
 $_gatewayCertPfxPassword = "certificatePassword123"
 $_PortalCertPfxPassword = "certificatePassword123"
 
 #APPGW
-$_appgwname = "appgw800"
+$_appgwname = "appgw_name"
 
 ######################################################################################################
 #1  Create a Resource Group for Resource Manager 
