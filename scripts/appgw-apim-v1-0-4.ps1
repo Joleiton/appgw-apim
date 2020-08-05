@@ -5,15 +5,19 @@
 
 #GLOBAL VARIABLES
 
+#SUB
+
+$_subscriptionId = ""
+
 #RG
-$_rgname = "rg-appgw-apim-700"
+$_rgname = "rg-appgw-apim"
 $_location = "East Us"
 
 #APIM
 #apim/service
-$_apimServiceName = "jlapim700"  # API Management service instance name   
+$_apimServiceName = "apimservicename"  # API Management service instance name   
 $_apimOrganization = "Microsoft"
-$_apimAdminEmail = "joleiton@microsoft.com"
+$_apimAdminEmail = "youralias@microsoft.com"
 
 #apim/hostname
 $_apim_gatewayHostname =  "api.jlacloud.com"
@@ -23,9 +27,8 @@ $_apim_portalHostname = "portal.jlacloud.com"
 $_gatewayCertPfxPassword = "certificatePassword123"
 $_PortalCertPfxPassword = "certificatePassword123"
 
-
 #APPGW
-$_appgwname = "appgw700"
+$_appgwname = "appgw800"
 
 ######################################################################################################
 #1  Create a Resource Group for Resource Manager 
@@ -36,7 +39,7 @@ $_appgwname = "appgw700"
 
 #Step2 - Select target subscription Id 
 
-$subscriptionId = "57acb41a-7c5f-4082-8ca9-738ab1a9a85f"
+$subscriptionId = $_subscriptionId
 
 Get-AzSubscription -Subscriptionid $subscriptionId | Select-AzSubscription
 
@@ -55,11 +58,11 @@ New-AzResourceGroup -Name $resourceGroupName -Location $location
 #Make sure that all commands to create an application gateway use the same resource group.
 
 ######################################################################################################
-#2 Create a Virtual Network and a subnet for the application gateway
-
+#2 Create a Virtual Network and a subnet for the application gateway & APIM 
 
 ##################
 
+#NSG rules for APIM Subnet 
 
 #inbound
 $inrule1 = New-AzNetworkSecurityRuleConfig -Name 'Client-APIM' -Description "Client communication to API Management" -Access Allow -Protocol Tcp -Direction Inbound -Priority 105 -SourceAddressPrefix Internet -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange 80,443
@@ -67,7 +70,6 @@ $inrule2 = New-AzNetworkSecurityRuleConfig -Name 'RP' -Description "Management e
 $inrule3 = New-AzNetworkSecurityRuleConfig -Name 'In-Redis' -Description "Access Redis Service for Cache policies between machines" -Access Allow -Protocol Tcp -Direction Inbound -Priority 115 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange 6381,6383
 $inrule4 = New-AzNetworkSecurityRuleConfig -Name 'In-Rate_Limit_Counters' -Description "Sync Counters for Rate Limit policies between machines" -Access Allow -Protocol Udp -Direction Inbound -Priority 120 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange 4290
 $inrule5 = New-AzNetworkSecurityRuleConfig -Name 'Azure_Load_Balancer' -Description "Azure Infrastructure Load Balancer" -Access Allow -Protocol Tcp -Direction Inbound -Priority 125 -SourceAddressPrefix AzureLoadBalancer -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange *
-
 
 #outbund
 
@@ -134,14 +136,11 @@ $apimService = New-AzApiManagement -ResourceGroupName $resourceGroupName -Locati
 #Imnportant -- -- - -The new developer portal also requires enabling connectivity to the API Management's management endpoint in addition to the steps below.
 
 
-
-
 $gatewayHostname = $_apim_gatewayHostname
 $portalHostname = $_apim_portalHostname
 
 
 #### Self Signed Certificates
-
 
 $gatewayCertPfxPassword = $_gatewayCertPfxPassword
 $PortalCertPfxPassword = $_PortalCertPfxPassword
@@ -153,7 +152,6 @@ $password = ConvertTo-SecureString -String $gatewayCertPfxPassword -Force -AsPla
 $certGatewayName = "gateway"+".pfx"
 
 Export-PfxCertificate -Cert $certGateway -FilePath $certGatewayName  -Password $password
-
 
 $certPortal = New-SelfSignedCertificate -DnsName $portalHostname -CertStoreLocation "cert:\LocalMachine\My" -KeyLength 2048 -KeySpec "KeyExchange"
 
@@ -167,8 +165,6 @@ Export-Certificate -Cert $certGateway -FilePath gateway.cer
 
 
 ####
-
-
 
 $gatewayCertCerPath = "gateway.cer"
 $gatewayCertPfxPath = "gateway.pfx"
