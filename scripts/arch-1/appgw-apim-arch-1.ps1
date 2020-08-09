@@ -17,28 +17,34 @@
 #GLOBAL VARIABLES
 
 #SUB
-$_subscriptionId = ""
+$_subscriptionId = "57acb41a-7c5f-4082-8ca9-738ab1a9a85f"
 
 #RG
-$_rgname = "rg-appgw-apim"
+$_rgname = "rg-appgw-apim_a1_v1"
 $_location = "East Us"
 
-#APIM
+##APIM
+
+#1######
 #apim/service
-$_apimServiceName = "apim_service_name"  # API Management service instance name   
+$_apimServiceName = "apiminternala1v1"  # API Management service instance name   
 $_apimOrganization = "Microsoft"
-$_apimAdminEmail = "youralias@microsoft.com"
+$_apimAdminEmail = "joleiton@microsoft.com"
 
 #apim/hostname
-$_apim_gatewayHostname =  "yourproxy.customdomain.com"
-$_apim_portalHostname = "yourportal.customdomain.com"
+$_apim_gatewayHostname =  "api.jlacloud.com"
+$_apim_portalHostname = "portal.jlacloud.com"
+$_apim_managementHostname = "management.jlacloud.com"
 
-#Self Signed Cert Passwor
+#Self Signed Cert Password
 $_gatewayCertPfxPassword = "certificatePassword123"
 $_PortalCertPfxPassword = "certificatePassword123"
+$_ManagementCertPfxPassword = "certificatePassword123"
+
+#######
 
 #APPGW
-$_appgwname = "appgw_name"
+$_appgwname = "appgw_a1"
 
 ######################################################################################################
 #1  Create a Resource Group for Resource Manager 
@@ -70,6 +76,9 @@ New-AzResourceGroup -Name $resourceGroupName -Location $location
 ######################################################################################################
 #2 Create a Virtual Network and a subnet for the application gateway & APIM 
 
+######################################################################################################
+#2 Create a Virtual Network and a subnet for the application gateway & APIM 
+
 ##################
 
 #NSG rules for APIM Subnet 
@@ -80,6 +89,7 @@ $inrule2 = New-AzNetworkSecurityRuleConfig -Name 'RP' -Description "Management e
 $inrule3 = New-AzNetworkSecurityRuleConfig -Name 'In-Redis' -Description "Access Redis Service for Cache policies between machines" -Access Allow -Protocol Tcp -Direction Inbound -Priority 115 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange 6381,6383
 $inrule4 = New-AzNetworkSecurityRuleConfig -Name 'In-Rate_Limit_Counters' -Description "Sync Counters for Rate Limit policies between machines" -Access Allow -Protocol Udp -Direction Inbound -Priority 120 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange 4290
 $inrule5 = New-AzNetworkSecurityRuleConfig -Name 'Azure_Load_Balancer' -Description "Azure Infrastructure Load Balancer" -Access Allow -Protocol Tcp -Direction Inbound -Priority 125 -SourceAddressPrefix AzureLoadBalancer -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange *
+$inrule104 = New-AzNetworkSecurityRuleConfig -Name 'CASG-Rule-104' -Description "CSS Governance Security Rule.  Deny risky inbound.  https://aka.ms/casg" -Access Deny -Protocol Tcp -Direction Inbound -Priority 4096 -SourceAddressPrefix Internet -SourcePortRange * -DestinationAddressPrefix * -DestinationPortRange 13,17,19,22,23,53,69,111,119,123,135,137,138,139,161,162,389,445,512,514,593,636,873,1433,1434,1900,2049,2301,2381,3268,3306,3389,4333,5353,5432,5800,5900,5985,5986,6379,7000,7001,7199,9042,9160,9300,11211,16379,26379,27017
 
 #outbund
 
@@ -91,11 +101,29 @@ $outrule5 = New-AzNetworkSecurityRuleConfig -Name 'GIT' -Description "Dependency
 $outrule6 = New-AzNetworkSecurityRuleConfig -Name 'AzureCloud' -Description "Health and Monitoring Extension" -Access Allow -Protocol Tcp -Direction Outbound -Priority 135 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix AzureCloud -DestinationPortRange 443,1200
 $outrule7 = New-AzNetworkSecurityRuleConfig -Name 'AzureMonitor' -Description "Publish Diagnostics Logs and Metrics, Resource Health and Application Insights" -Access Allow -Protocol Tcp -Direction Outbound -Priority 140 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix AzureCloud -DestinationPortRange 443,1200
 $outrule8 = New-AzNetworkSecurityRuleConfig -Name 'Internet_SMTP' -Description "Connect to SMTP Relay for sending e-mails" -Access Allow -Protocol Tcp -Direction Outbound -Priority 145 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix Internet -DestinationPortRange 25,587,25028
-$outrule9 = New-AzNetworkSecurityRuleConfig -Name 'Out_Redis' -Description "Access Redis Service for Cache policies between machines" -Access Allow -Protocol Tcp -Direction Outbound -Priority 145 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange 6381,6383
-$outrule10 = New-AzNetworkSecurityRuleConfig -Name 'Out_Rate_Limit_Counters' -Description "Sync Counters for Rate Limit policies between machines" -Access Allow -Protocol Udp -Direction Outbound -Priority 150 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange 4290
+$outrule9 = New-AzNetworkSecurityRuleConfig -Name 'Out_Redis' -Description "Access Redis Service for Cache policies between machines" -Access Allow -Protocol Tcp -Direction Outbound -Priority 150 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange 6381,6383
+$outrule10 = New-AzNetworkSecurityRuleConfig -Name 'Out_Rate_Limit_Counters' -Description "Sync Counters for Rate Limit policies between machines" -Access Allow -Protocol Udp -Direction Outbound -Priority 155 -SourceAddressPrefix VirtualNetwork -SourcePortRange * -DestinationAddressPrefix VirtualNetwork -DestinationPortRange 4290
 
 
-$nsg_apim = New-AzNetworkSecurityGroup -ResourceGroupName $_rgname -Location $_location -Name "apim_nsg" -SecurityRules $inrule1,$inrule2,$inrule3,$inrule4,$inrule5,$outrule1,$outrule2,$outrule3,$outrule4,$outrule5,$outrule6,$outrule7,$outrule8,$outrule9,$outrule10
+$nsg_apim = New-AzNetworkSecurityGroup -ResourceGroupName $_rgname -Location $_location -Name "apim_nsg" -SecurityRules $inrule1,$inrule2,$inrule3,$inrule4,$inrule5,$inrule104,$outrule1,$outrule2,$outrule3,$outrule4,$outrule5,$outrule6,$outrule7,$outrule8,$outrule9,$outrule10
+
+
+################
+
+##################
+
+#NSG rules for APIM Subnet 
+
+#inbound
+$inrule1 = New-AzNetworkSecurityRuleConfig -Name 'Any' -Description "Any communication" -Access Allow -Protocol Tcp -Direction Inbound -Priority 100 -SourceAddressPrefix * -SourcePortRange * -DestinationAddressPrefix * -DestinationPortRange *
+$inrule104 = New-AzNetworkSecurityRuleConfig -Name 'CASG-Rule-104' -Description "CSS Governance Security Rule.  Deny risky inbound.  https://aka.ms/casg" -Access Deny -Protocol Tcp -Direction Inbound -Priority 4096 -SourceAddressPrefix Internet -SourcePortRange * -DestinationAddressPrefix * -DestinationPortRange 13,17,19,22,23,53,69,111,119,123,135,137,138,139,161,162,389,445,512,514,593,636,873,1433,1434,1900,2049,2301,2381,3268,3306,3389,4333,5353,5432,5800,5900,5985,5986,6379,7000,7001,7199,9042,9160,9300,11211,16379,26379,27017
+##
+
+#outbund
+
+##
+
+$nsg_appgw = New-AzNetworkSecurityGroup -ResourceGroupName $_rgname -Location $_location -Name "appgw_nsg" -SecurityRules $inrule1,$inrule104
 
 
 ################
@@ -104,10 +132,11 @@ $nsg_apim = New-AzNetworkSecurityGroup -ResourceGroupName $_rgname -Location $_l
 #The following example shows how to create a Virtual Network using Resource Manager.
 
 #Step 1 - Assing the address range 10.0.0.0/24 to the subnet variable to be used for Application Gateway while creating a Virtual Network
-$appgatewaysubnet = New-AzVirtualNetworkSubnetConfig -Name "appg-apim-vnet-subnet-appgw" -AddressPrefix "10.0.0.0/24"
+$appgatewaysubnet = New-AzVirtualNetworkSubnetConfig -Name "subnet-appgw" -AddressPrefix "10.0.0.0/24"  -NetworkSecurityGroup $nsg_appgw
 
 #Step 2 - Assing the address range 10.0.0.0/24 to the subnet variable to be used for API Management while creating a Virtual Network
-$apimsubnet = New-AzVirtualNetworkSubnetConfig -Name "appgw-apim-vnet-subnet-apim" -AddressPrefix "10.0.1.0/24"  -NetworkSecurityGroup $nsg_apim
+$apimsubnet = New-AzVirtualNetworkSubnetConfig -Name "subnet-apim-1" -AddressPrefix "10.0.1.0/24"  -NetworkSecurityGroup $nsg_apim
+
 
 #Step 3 - Create a Virtual Network named ****  in resource group for the RG region.  Using prefix 10.0.0.0/16 with subnets 10.0.0.0/24 and 10.0.1.0/24
 
@@ -119,6 +148,7 @@ $vnet = New-AzVirtualNetwork -Name "appgw-apim-vnet" -ResourceGroupName $resourc
 
 $appgatewaysubnetdata = $vnet.Subnets[0]
 $apimsubnetdata = $vnet.Subnets[1]
+
 
 ######################################################################################################
 #3 Create an API Management service inside a VNET configured in internal mode 
@@ -141,19 +171,20 @@ $apimService = New-AzApiManagement -ResourceGroupName $resourceGroupName -Locati
 
 ######################################################################################################
 
+
 #4 - Set-up a custom domain name in API Management 
 
 #Imnportant -- -- - -The new developer portal also requires enabling connectivity to the API Management's management endpoint in addition to the steps below.
 
-
 $gatewayHostname = $_apim_gatewayHostname
 $portalHostname = $_apim_portalHostname
-
+$managementHostname = $_apim_managementHostname
 
 #### Self Signed Certificates
 
 $gatewayCertPfxPassword = $_gatewayCertPfxPassword
 $PortalCertPfxPassword = $_PortalCertPfxPassword
+$ManagementCertPfxPassword = $_ManagementCertPfxPassword
 
 $certGateway = New-SelfSignedCertificate -DnsName $gatewayHostname -CertStoreLocation "cert:\LocalMachine\My" -KeyLength 2048 -KeySpec "KeyExchange"
 
@@ -171,21 +202,36 @@ $certPortalName =  "portal"+".pfx"
 
 Export-PfxCertificate -Cert $certPortal -FilePath $certPortalName -Password $password
 
+
+$certManagement = New-SelfSignedCertificate -DnsName $managementHostname -CertStoreLocation "cert:\LocalMachine\My" -KeyLength 2048 -KeySpec "KeyExchange"
+
+$password = ConvertTo-SecureString -String $ManagementCertPfxPassword -Force -AsPlainText
+
+$certManagementName =  "management"+".pfx"
+
+Export-PfxCertificate -Cert $certManagement -FilePath $certManagementName -Password $password
+
 Export-Certificate -Cert $certGateway -FilePath gateway.cer
 
+Export-Certificate -Cert $certPortal -FilePath portal.cer
 
+Export-Certificate -Cert $certManagement -FilePath management.cer
 ####
 
 $gatewayCertCerPath = "gateway.cer"
+$portalCertCerPath = "portal.cer"
+$managementCertCerPath = "management.cer"
+
 $gatewayCertPfxPath = "gateway.pfx"
+$managementCertPfxPath = "management.pfx"
 $portalCertPfxPath = "portal.pfx"
 $gatewayCertPfxPassword = $_gatewayCertPfxPassword
 $PortalCertPfxPassword = $_PortalCertPfxPassword
+$ManagementCertPfxPassword  = $_ManagementCertPfxPassword
 
 $certPwd = ConvertTo-SecureString -String $gatewayCertPfxPassword -AsPlainText -Force
 $certPortalPwd = ConvertTo-SecureString -String $portalCertPfxPassword -AsPlainText -Force
-
-
+$certManagementPwd = ConvertTo-SecureString -String $ManagementCertPfxPassword -AsPlainText -Force
 
 #STEP 2 - Create and set the hostname configuration object for the proxy and for the portal
 
@@ -194,12 +240,18 @@ $proxyHostnameConfig =  New-AzApiManagementCustomHostnameConfiguration -Hostname
 
 $portalHostnameConfig = New-AzApiManagementCustomHostnameConfiguration -Hostname $portalHostname -HostnameType DeveloperPortal -PfxPath $portalCertPfxPath -PfxPassword $certPortalPwd 
 
+$managementHostnameConfig = New-AzApiManagementCustomHostnameConfiguration -Hostname $managementHostname -HostnameType DeveloperPortal -PfxPath $managementCertPfxPath -PfxPassword $certManagementPwd
+
 $apimService.ProxyCustomHostnameConfiguration = $proxyHostnameConfig
 $apimService.PortalCustomHostnameConfiguration = $portalHostnameConfig
+$apimService.ManagementCustomHostnameConfiguration = $managementHostnameConfig
+
 
 Set-AzApiManagement -InputObject $apimService
 
+
 ######################################################################################################
+
 #5 - Create a public IP address for the front end configuration 
 
 #Create  a public IP publicIP01 resource in the resource group
@@ -231,9 +283,11 @@ $fipconfig01 = New-AzApplicationGatewayFrontendIPConfig -Name "frontend1" -Publi
 
 #Step 4 -- Configure the certificates for the Application Gateway , which will be used to decrypt and re-encrypt the traffic passing through
 
-$cert = New-AzApplicationGatewaySslCertificate -Name "cert01" -CertificateFile $gatewayCertPfxPath -Password $certPwd
+$cert = New-AzApplicationGatewaySslCertificate -Name "certProxy01" -CertificateFile $gatewayCertPfxPath -Password $certPwd
 
-$certPortal = New-AzApplicationGatewaySslCertificate -Name "cert02" -CertificateFile $portalCertPfxPath -Password $certPortalPwd
+$certPortal = New-AzApplicationGatewaySslCertificate -Name "certPortal01" -CertificateFile $portalCertPfxPath -Password $certPortalPwd
+
+$certManagement = New-AzApplicationGatewaySslCertificate -Name "certManagement01" -CertificateFile $managementCertPfxPath -Password $certManagementPwd
 
 
 
@@ -245,17 +299,25 @@ $listener  =  New-AzApplicationGatewayHttpListener -Name "listener01" -Protocol 
 $portalListener = New-AzApplicationGatewayHttpListener -Name "listener02" -Protocol "Https" -FrontendIPConfiguration $fipconfig01 -FrontendPort $fp01 -SslCertificate $certPortal -HostName $portalHostname -RequireServerNameIndication true
 
 
+$managementListener = New-AzApplicationGatewayHttpListener -Name "listener03" -Protocol "Https" -FrontendIPConfiguration $fipconfig01 -FrontendPort $fp01 -SslCertificate $certManagement -HostName $managementHostname -RequireServerNameIndication true
+
 #Step 6 - Create custom probes to the API Management service ContosoApi proxy domain endpoint. The path /status-0123456789abcdef is a  default health endpoint hosted on all the 
 #the API Management services . Set api.contoso.net as a custom probe hostname to secure it with the TLS/SSL certificate 
 
 $apimprobe = New-AzApplicationGatewayProbeConfig -Name "apimproxyprobe" -Protocol "Https" -HostName $gatewayHostname -Path "/status-0123456789abcdef" -Interval 30 -Timeout 120 -UnhealthyThreshold 8
 $apimPortalProbe = New-AzApplicationGatewayProbeConfig -Name "apimportalprobe" -Protocol "Https" -HostName $portalHostname -Path "/signin" -Interval 60 -Timeout 300 -UnhealthyThreshold 8
+$apimManagementProbe = New-AzApplicationGatewayProbeConfig -Name "apimmanagementprobe" -Protocol "Https" -HostName $managementHostname -Path "/" -Interval 60 -Timeout 300 -UnhealthyThreshold 8
+
 
 
 #Step 7 - Upload the certificate to be used on the TLS -enabled backend pool resourcesl. This is the same certificate you provided in Step 4 
 
-
 $authcert = New-AzApplicationGatewayAuthenticationCertificate -Name "whitelistcert1" -CertificateFile $gatewayCertCerPath
+
+$authPortalcert = New-AzApplicationGatewayAuthenticationCertificate -Name "whitelistcert2" -CertificateFile $portalCertCerPath
+
+$authManagementcert = New-AzApplicationGatewayAuthenticationCertificate -Name "whitelistcert3" -CertificateFile $managementCertCerPath
+
 
 
 #Step 8 -  Configure HTTP backend settings for the Application Gateway . This includes a setting a timeout limit for backend request. After which they are cancelled. This value is different
@@ -263,19 +325,24 @@ $authcert = New-AzApplicationGatewayAuthenticationCertificate -Name "whitelistce
 
 $apimPoolSetting = New-AzApplicationGatewayBackendHttpSettings -Name "apimPoolSetting" -Port 443 -Protocol "Https" -CookieBasedAffinity "Disabled" -Probe $apimprobe -AuthenticationCertificates $authcert -RequestTimeout 180
 
-$apimPoolPortalSetting = New-AzApplicationGatewayBackendHttpSettings -Name "apimPoolPortalSetting" -Port 443 -Protocol "Https" -CookieBasedAffinity "Disabled" -Probe $apimPortalProbe -AuthenticationCertificates $authcert -RequestTimeout 180
+$apimPoolPortalSetting = New-AzApplicationGatewayBackendHttpSettings -Name "apimPoolPortalSetting" -Port 443 -Protocol "Https" -CookieBasedAffinity "Disabled" -Probe $apimPortalProbe -AuthenticationCertificates $authPortalcert -RequestTimeout 180
+
+$apimPoolManagementSetting = New-AzApplicationGatewayBackendHttpSettings -Name "apimPoolManagementSetting" -Port 443 -Protocol "Https" -CookieBasedAffinity "Disabled" -Probe $apimManagementProbe -AuthenticationCertificates $authManagementcert -RequestTimeout 180
 
 
 #Step 9 - Configure a backend IP address pool name apimbackend with the internal virtual IP address of the APIM service created above
 
 $apimProxyBackendPool = New-AzApplicationGatewayBackendAddresspool -Name "apimbackend" -BackendIPAddresses $apimService.PrivateIPAddresses[0] 
 
-
 #Step 10  - Create rules for the Application Gateway to use basic routing 
 
 $rule01 = New-AzApplicationGatewayRequestRoutingRule -Name "rule1" -RuleType Basic -HttpListener $listener -BackendAddressPool $apimProxyBackendPool -BackendHttpSettings $apimPoolSetting
 
 $rule02 = New-AzApplicationGatewayRequestRoutingRule -Name "rule2" -RuleType Basic -HttpListener $portalListener -BackendAddressPool $apimProxyBackendPool -BackendHttpSettings $apimPoolPortalSetting
+
+$rule03 = New-AzApplicationGatewayRequestRoutingRule -Name "rule3" -RuleType Basic -HttpListener $managementListener -BackendAddressPool $apimProxyBackendPool -BackendHttpSettings $apimPoolManagementSetting
+
+
 #tip : change the -RuleType and routing to restric the accesss to certain pages of the developer Portal 
 
 #Step 11 - Configure the number of instances and size for the applciation gateway . In this example , we are using the WAF SKU for increased security of the APIM 
@@ -294,6 +361,8 @@ $config = New-AzapplicationGatewayWebApplicationFirewallConfiguration -Enabled $
 
 $appgwName = $_appgwname
 
+$appgw = New-AzApplicationGateway -Name $appgwName -ResourceGroupName $resourceGroupName -Location $location -BackendAddressPools $apimProxyBackendPool -BackendHttpSettingsCollection $apimPoolSetting, $apimPoolPortalSetting, $apimPoolManagementSetting -FrontendIPConfigurations $fipconfig01  -GatewayIPConfigurations $gipcongif -FrontendPorts $fp01 -HttpListeners $listener,$portalListener,$managementListener -RequestRoutingRules $rule01,$rule02,$rule03 -Sku $sku -WebApplicationFirewallConfiguration $config -SslCertificates $cert, $certPortal,$certManagement -AuthenticationCertificates $authcert,$authPortalcert, $authManagementcert -Probes $apimprobe,$apimPortalProbe,$apimManagementProbe -debug
 
-$appgw = New-AzApplicationGateway -Name $appgwName -ResourceGroupName $resourceGroupName -Location $location -BackendAddressPools $apimProxyBackendPool -BackendHttpSettingsCollection $apimPoolSetting, $apimPoolPortalSetting -FrontendIPConfigurations $fipconfig01  -GatewayIPConfigurations $gipcongif -FrontendPorts $fp01 -HttpListeners $listener,$portalListener -RequestRoutingRules $rule01,$rule02 -Sku $sku -WebApplicationFirewallConfiguration $config -SslCertificates $cert, $certPortal -AuthenticationCertificates $authcert -Probes $apimprobe , $apimPortalProbe
+$appgw
 ######################################################################################################
+
