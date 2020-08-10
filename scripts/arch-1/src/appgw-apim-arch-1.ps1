@@ -20,14 +20,14 @@
 $_subscriptionId = "57acb41a-7c5f-4082-8ca9-738ab1a9a85f"
 
 #RG
-$_rgname = "rg-appgw-apim_a1_v1"
+$_rgname = "rg-appgw-apim_a1_v6"
 $_location = "East Us"
 
 ##APIM
 
 #1######
 #apim/service
-$_apimServiceName = "apiminternala1v1"  # API Management service instance name   
+$_apimServiceName = "apiminternala1v6"  # API Management service instance name   
 $_apimOrganization = "Microsoft"
 $_apimAdminEmail = "joleiton@microsoft.com"
 
@@ -44,7 +44,7 @@ $_ManagementCertPfxPassword = "certificatePassword123"
 #######
 
 #APPGW
-$_appgwname = "appgw_a1"
+$_appgwname = "appgw_a1_v6"
 
 ######################################################################################################
 #1  Create a Resource Group for Resource Manager 
@@ -240,7 +240,7 @@ $proxyHostnameConfig =  New-AzApiManagementCustomHostnameConfiguration -Hostname
 
 $portalHostnameConfig = New-AzApiManagementCustomHostnameConfiguration -Hostname $portalHostname -HostnameType DeveloperPortal -PfxPath $portalCertPfxPath -PfxPassword $certPortalPwd 
 
-$managementHostnameConfig = New-AzApiManagementCustomHostnameConfiguration -Hostname $managementHostname -HostnameType DeveloperPortal -PfxPath $managementCertPfxPath -PfxPassword $certManagementPwd
+$managementHostnameConfig = New-AzApiManagementCustomHostnameConfiguration -Hostname $managementHostname -HostnameType Management -PfxPath $managementCertPfxPath -PfxPassword $certManagementPwd
 
 $apimService.ProxyCustomHostnameConfiguration = $proxyHostnameConfig
 $apimService.PortalCustomHostnameConfiguration = $portalHostnameConfig
@@ -306,7 +306,7 @@ $managementListener = New-AzApplicationGatewayHttpListener -Name "listener03" -P
 
 $apimprobe = New-AzApplicationGatewayProbeConfig -Name "apimproxyprobe" -Protocol "Https" -HostName $gatewayHostname -Path "/status-0123456789abcdef" -Interval 30 -Timeout 120 -UnhealthyThreshold 8
 $apimPortalProbe = New-AzApplicationGatewayProbeConfig -Name "apimportalprobe" -Protocol "Https" -HostName $portalHostname -Path "/signin" -Interval 60 -Timeout 300 -UnhealthyThreshold 8
-$apimManagementProbe = New-AzApplicationGatewayProbeConfig -Name "apimmanagementprobe" -Protocol "Https" -HostName $managementHostname -Path "/" -Interval 60 -Timeout 300 -UnhealthyThreshold 8
+$apimManagementProbe = New-AzApplicationGatewayProbeConfig -Name "apimmanagementprobe" -Protocol "Https" -HostName $managementHostname -Path "/ServiceStatus" -Interval 60 -Timeout 300 -UnhealthyThreshold 8
 
 
 
@@ -361,7 +361,7 @@ $config = New-AzapplicationGatewayWebApplicationFirewallConfiguration -Enabled $
 
 $appgwName = $_appgwname
 
-$appgw = New-AzApplicationGateway -Name $appgwName -ResourceGroupName $resourceGroupName -Location $location -BackendAddressPools $apimProxyBackendPool -BackendHttpSettingsCollection $apimPoolSetting, $apimPoolPortalSetting, $apimPoolManagementSetting -FrontendIPConfigurations $fipconfig01  -GatewayIPConfigurations $gipcongif -FrontendPorts $fp01 -HttpListeners $listener,$portalListener,$managementListener -RequestRoutingRules $rule01,$rule02,$rule03 -Sku $sku -WebApplicationFirewallConfiguration $config -SslCertificates $cert, $certPortal,$certManagement -AuthenticationCertificates $authcert,$authPortalcert, $authManagementcert -Probes $apimprobe,$apimPortalProbe,$apimManagementProbe -debug
+$appgw = New-AzApplicationGateway -Name $appgwName -ResourceGroupName $resourceGroupName -Location $location -BackendAddressPools $apimProxyBackendPool -BackendHttpSettingsCollection $apimPoolSetting, $apimPoolPortalSetting, $apimPoolManagementSetting -FrontendIPConfigurations $fipconfig01  -GatewayIPConfigurations $gipcongif -FrontendPorts $fp01 -HttpListeners $listener,$portalListener,$managementListener -RequestRoutingRules $rule01,$rule02,$rule03 -Sku $sku -WebApplicationFirewallConfiguration $config -SslCertificates $cert, $certPortal,$certManagement -AuthenticationCertificates $authcert,$authPortalcert, $authManagementcert -Probes $apimprobe,$apimPortalProbe,$apimManagementProbe 
 
 $appgw
 ######################################################################################################
